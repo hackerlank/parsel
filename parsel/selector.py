@@ -2,6 +2,8 @@
 XPath selectors based on lxml
 """
 
+import sys
+
 import six
 from lxml import etree
 
@@ -76,12 +78,16 @@ class SelectorList(list):
 
     def re(self, regex):
         """
-        Call the ``.re()`` method for each element is this list and return
+        Call the ``.re()`` method for each element in this list and return
         their results flattened, as a list of unicode strings.
         """
         return flatten([x.re(regex) for x in self])
 
     def re_first(self, regex):
+        """
+        Call the ``.re()`` method for the first element in this list and
+        return the result in an unicode string.
+        """
         for el in iflatten(x.re(regex) for x in self):
             return el
 
@@ -93,6 +99,10 @@ class SelectorList(list):
         return [x.extract() for x in self]
 
     def extract_first(self, default=None):
+        """
+        Return the result of ``.extract()`` for the first element in this list.
+        If the list is empty, return the default value.
+        """
         for x in self:
             return x.extract()
         else:
@@ -167,9 +177,10 @@ class Selector(object):
         try:
             result = xpathev(query, namespaces=self.namespaces,
                              smart_strings=self._lxml_smart_strings)
-        except etree.XPathError:
-            msg = u"Invalid XPath: %s" % query
-            raise ValueError(msg if six.PY3 else msg.encode("unicode_escape"))
+        except etree.XPathError as exc:
+            msg = u"XPath error: %s in %s" % (exc, query)
+            msg = msg if six.PY3 else msg.encode('unicode_escape')
+            six.reraise(ValueError, ValueError(msg), sys.exc_info()[2])
 
         if type(result) is not list:
             result = [result]
@@ -206,7 +217,7 @@ class Selector(object):
 
     def extract(self):
         """
-        Serialize and return the matched nodes as a list of unicode strings.
+        Serialize and return the matched nodes in a single unicode string.
         Percent encoded content is unquoted.
         """
         try:
